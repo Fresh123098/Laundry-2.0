@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fresh & Clean Laundry</title>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, sans-serif; background: #f0f4f8; padding: 20px; }
+        .btn { padding: 8px 16px; border-radius: 30px; border: none; cursor: pointer; font-weight: bold; }
+        .btn-primary { background: #0f2b4b; color: white; }
+        .btn-outline { background: white; border: 1px solid #0f2b4b; color: #0f2b4b; }
+        .card { background: white; border-radius: 20px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        input, select, textarea { width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 12px; border: 1px solid #ccc; }
+        .flex { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 12px; }
+        .item-card { background: white; border-radius: 16px; padding: 12px; text-align: center; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .cart-item { display: flex; justify-content: space-between; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
+        .driver-order { background: #fef9e3; padding: 12px; border-radius: 16px; margin-bottom: 12px; }
+        .map-link { background: #e6f0ff; padding: 6px; border-radius: 12px; text-align: center; margin: 8px 0; }
+        .tab { padding: 6px 12px; background: #ddd; border-radius: 20px; cursor: pointer; }
+        .tab.active { background: #0f2b4b; color: white; }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 8px 16px; border-radius: 30px; opacity: 0; transition: 0.2s; }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+<div id="toast" class="toast"></div>
+
+<div id="loginScreen">
+    <div class="card" style="max-width:400px; margin:auto; margin-top:50px;">
+        <h2>Laundry Manager</h2>
+        <div class="flex" style="margin:15px 0">
+            <button class="btn" id="tabMaster" onclick="showLoginTab('master')">Master</button>
+            <button class="btn" id="tabClient" onclick="showLoginTab('client')">Client</button>
+            <button class="btn" id="tabDriver" onclick="showLoginTab('driver')">Driver</button>
+        </div>
+        <div id="masterLoginPanel">
+            <input type="password" id="masterPwd" placeholder="Master password">
+            <button class="btn btn-primary" onclick="masterLogin()">Login</button>
+        </div>
+        <div id="clientLoginPanel" style="display:none">
+            <input type="text" id="clientShopId" placeholder="Shop ID">
+            <input type="password" id="clientPwd" placeholder="Password">
+            <button class="btn btn-primary" onclick="clientLogin()">Login</button>
+        </div>
+        <div id="driverLoginPanel" style="display:none">
+            <input type="text" id="driverShopId" placeholder="Shop ID">
+            <input type="text" id="driverName" placeholder="Driver name">
+            <input type="password" id="driverPwd" placeholder="Driver password">
+            <button class="btn btn-primary" onclick="driverLogin()">Login</button>
+        </div>
+    </div>
+</div>
+
+<div id="masterPanel" style="display:none">
+    <div class="flex" style="justify-content:space-between; margin-bottom:20px">
+        <h2>Master Dashboard</h2>
+        <button class="btn btn-outline" onclick="logout()">Logout</button>
+    </div>
+    <button class="btn btn-primary" onclick="createShop()">+ New Shop</button>
+    <div id="shopsList"></div>
+</div>
+
+<div id="clientPanel" style="display:none">
+    <div class="flex" style="justify-content:space-between">
+        <h2 id="shopNameHeader"></h2>
+        <button class="btn btn-outline" onclick="logout()">Logout</button>
+    </div>
+    <div class="flex" style="margin:10px 0">
+        <input type="text" id="searchItem" placeholder="Search item" style="flex:1">
+        <div class="flex">
+            <span>Quick Add</span>
+            <div id="quickToggle" style="width:40px; height:20px; background:#ccc; border-radius:20px; position:relative; cursor:pointer" onclick="toggleQuickAdd()"><div id="quickDot" style="width:16px; height:16px; background:white; border-radius:50%; position:absolute; top:2px; left:2px; transition:0.2s"></div></div>
+        </div>
+        <button class="btn btn-outline" id="adminBtn" style="display:none" onclick="openItemManager()">Manage Items</button>
+    </div>
+    <div id="categories" class="flex" style="margin-bottom:10px"></div>
+    <div id="itemsGrid" class="grid"></div>
+    <div id="cartSidebar" style="position:fixed; right:0; top:0; width:320px; background:white; padding:16px; height:100vh; overflow:auto; border-left:1px solid #ccc; box-shadow:-2px 0 10px rgba(0,0,0,0.1); display:none"></div>
+    <div id="mobileCartButton" style="position:fixed; bottom:20px; right:20px; background:#0f2b4b; color:white; border-radius:50%; width:55px; height:55px; display:flex; align-items:center; justify-content:center; font-size:24px; cursor:pointer; display:none">🧺</div>
+    <div id="mobileCartPanel" style="position:fixed; bottom:0; left:0; right:0; background:white; border-radius:20px 20px 0 0; padding:16px; transform:translateY(100%); transition:0.2s; z-index:1000"></div>
+    <div id="overlay" style="position:fixed; inset:0; background:rgba(0,0,0,0.4); display:none; z-index:999" onclick="closeMobileCart()"></div>
+</div>
+
+<div id="driverPanel" style="display:none">
+    <div class="flex" style="justify-content:space-between">
+        <h2 id="driverNameHeader"></h2>
+        <button class="btn btn-outline" onclick="logout()">Logout</button>
+    </div>
+    <div class="flex" style="margin:10px 0">
+        <button class="tab active" id="pickupTab" onclick="showDriverOrders('pickup')">Pickups</button>
+        <button class="tab" id="deliveryTab" onclick="showDriverOrders('delivery')">Deliveries</button>
+    </div>
+    <div id="driverOrdersList"></div>
+</div>
+
+<script>
+    // ---------- DATA ----------
+    let shops = [];
+    let currentShop = null;
+    let currentRole = null; // 'owner' or 'staff'
+    let currentDriver = null;
+    let cart = [];
+    let quickAdd = false;
+    let activeCat = 'all';
+    let searchText = '';
+
+    function saveData() { localStorage.setItem('laundry_data', JSON.stringify({ shops, masterPwd: 'master2025' })); }
+    function loadData() {
+        let data = localStorage.getItem('laundry_data');
+        if (!data) {
+            shops = [
+                { id: 'fresh1', name: 'Fresh & Clean', ownerPwd: 'owner123', staffPwd: 'staff123', items: [
+                    { id: 'i1', name: 'Shirt', category: 'Clothing', img: '', washPrice: 0.8, dryPrice: 1.2, ironPrice: 0.4 },
+                    { id: 'i2', name: 'Jeans', category: 'Clothing', img: '', washPrice: 1.2, dryPrice: 1.8, ironPrice: 0.6 },
+                    { id: 'i3', name: 'Towel', category: 'Home', img: '', washPrice: 0.6, dryPrice: 0.9, ironPrice: 0.3 }
+                ], orders: [], drivers: [{ name: 'Ahmed', password: 'driver123' }] }
+            ];
+            saveData();
+        } else {
+            let parsed = JSON.parse(data);
+            shops = parsed.shops;
+        }
+    }
+    function showToast(msg, err=false) { let t = document.getElementById('toast'); t.innerText = msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); }
+
+    // UI switching
+    function showLoginTab(tab) {
+        document.getElementById('masterLoginPanel').style.display = tab === 'master' ? 'block' : 'none';
+        document.getElementById('clientLoginPanel').style.display = tab === 'client' ? 'block' : 'none';
+        document.getElementById('driverLoginPanel').style.display = tab === 'driver' ? 'block' : 'none';
+    }
+    function logout() {
+        document.getElementById('masterPanel').style.display = 'none';
+        document.getElementById('clientPanel').style.display = 'none';
+        document.getElementById('driverPanel').style.display = 'none';
+        document.getElementById('loginScreen').style.display = 'block';
+        cart = [];
+    }
+    // Master functions
+    function masterLogin() {
+        let pwd = document.getElementById('masterPwd').value;
+        if (pwd === 'master2025') {
+            document.getElementById('loginScreen').style.display = 'none';
+            renderMasterPanel();
+        } else showToast('Wrong master password', true);
+    }
+    function renderMasterPanel() {
+        let container = document.getElementById('masterPanel');
+        let shopsHtml = shops.map(shop => `
+            <div class="card">
+                <div class="flex" style="justify-content:space-between">
+                    <strong>${shop.name} (${shop.id})</strong>
+                    <div>
+                        <button class="btn btn-outline" onclick="editShop('${shop.id}')">Edit</button>
+                        <button class="btn btn-outline" onclick="deleteShop('${shop.id}')" style="color:red">Delete</button>
+                    </div>
+                </div>
+                <div>Owner: ${shop.ownerPwd} | Staff: ${shop.staffPwd}</div>
+                <div class="flex" style="margin-top:8px">
+                    <button class="btn btn-primary" onclick="manageItems('${shop.id}')">Manage Items</button>
+                    <button class="btn btn-primary" onclick="manageDrivers('${shop.id}')">Manage Drivers</button>
+                </div>
+            </div>
+        `).join('');
+        container.innerHTML = `<div class="flex" style="justify-content:space-between"><h2>Master</h2><button class="btn btn-outline" onclick="logout()">Logout</button></div><button class="btn btn-primary" onclick="createShop()">+ New Shop</button><div id="shopsList">${shopsHtml}</div>`;
+        document.getElementById('masterPanel').style.display = 'block';
+    }
+    function createShop() {
+        let id = prompt('Shop ID (no spaces)');
+        if (!id) return;
+        let name = prompt('Shop Name');
+        let owner = prompt('Owner password');
+        let staff = prompt('Staff password');
+        shops.push({ id, name, ownerPwd: owner, staffPwd: staff, items: [], orders: [], drivers: [] });
+        saveData();
+        renderMasterPanel();
+    }
+    function editShop(id) {
+        let shop = shops.find(s => s.id === id);
+        if (!shop) return;
+        shop.name = prompt('New name', shop.name) || shop.name;
+        shop.ownerPwd = prompt('Owner password', shop.ownerPwd) || shop.ownerPwd;
+        shop.staffPwd = prompt('Staff password', shop.staffPwd) || shop.staffPwd;
+        saveData();
+        renderMasterPanel();
+    }
+    function deleteShop(id) { shops = shops.filter(s => s.id !== id); saveData(); renderMasterPanel(); }
+    function manageItems(shopId) {
+        let shop = shops.find(s => s.id === shopId);
+        let itemsHtml = shop.items.map(item => `<div class="card"><div><strong>${item.name}</strong> (${item.category})<br>Wash: ${item.washPrice} | Dry: ${item.dryPrice} | Iron: ${item.ironPrice}</div><button class="btn btn-outline" onclick="deleteItem('${shopId}','${item.id}')">Delete</button></div>`).join('');
+        let html = `<h3>Items for ${shop.name}</h3><button class="btn btn-primary" onclick="addItem('${shopId}')">+ Add Item</button><div>${itemsHtml}</div><button class="btn btn-outline" onclick="renderMasterPanel()">Back</button>`;
+        document.getElementById('masterPanel').innerHTML = html;
+    }
+    function addItem(shopId) {
+        let name = prompt('Item name');
+        if (!name) return;
+        let cat = prompt('Category (Clothing/Home)');
+        let wash = parseFloat(prompt('Wash price')) || 0.5;
+        let dry = parseFloat(prompt('Dry price')) || 0.8;
+        let iron = parseFloat(prompt('Iron price')) || 0.3;
+        let shop = shops.find(s => s.id === shopId);
+        shop.items.push({ id: Date.now()+'', name, category: cat, img: '', washPrice: wash, dryPrice: dry, ironPrice: iron });
+        saveData();
+        manageItems(shopId);
+    }
+    function deleteItem(shopId, itemId) { let shop = shops.find(s => s.id === shopId); shop.items = shop.items.filter(i => i.id !== itemId); saveData(); manageItems(shopId); }
+    function manageDrivers(shopId) {
+        let shop = shops.find(s => s.id === shopId);
+        let driversHtml = (shop.drivers || []).map(d => `<div class="card"><strong>${d.name}</strong> (pwd: ${d.password})<button class="btn btn-outline" onclick="deleteDriver('${shopId}','${d.name}')">Delete</button></div>`).join('');
+        let html = `<h3>Drivers for ${shop.name}</h3><button class="btn btn-primary" onclick="addDriver('${shopId}')">+ Add Driver</button><div>${driversHtml}</div><button class="btn btn-outline" onclick="renderMasterPanel()">Back</button>`;
+        document.getElementById('masterPanel').innerHTML = html;
+    }
+    function addDriver(shopId) { let name = prompt('Driver name'); let pwd = prompt('Password'); let shop = shops.find(s => s.id === shopId); if (!shop.drivers) shop.drivers = []; shop.drivers.push({ name, password: pwd }); saveData(); manageDrivers(shopId); }
+    function deleteDriver(shopId, name) { let shop = shops.find(s => s.id === shopId); shop.drivers = shop.drivers.filter(d => d.name !== name); saveData(); manageDrivers(shopId); }
+
+    // Client login
+    function clientLogin() {
+        let id = document.getElementById('clientShopId').value;
+        let pwd = document.getElementById('clientPwd').value;
+        let shop = shops.find(s => s.id === id);
+        if (!shop) { showToast('Shop not found', true); return; }
+        if (pwd === shop.ownerPwd) currentRole = 'owner';
+        else if (pwd === shop.staffPwd) currentRole = 'staff';
+        else { showToast('Wrong password', true); return; }
+        currentShop = JSON.parse(JSON.stringify(shop));
+        cart = [];
+        renderClientPanel();
+    }
+    function renderClientPanel() {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('clientPanel').style.display = 'block';
+        document.getElementById('shopNameHeader').innerText = currentShop.name + ' (' + currentRole + ')';
+        document.getElementById('adminBtn').style.display = currentRole === 'owner' ? 'inline-block' : 'none';
+        renderCategories();
+        renderItems();
+        renderCartUI();
+        // responsive cart toggle
+        if (window.innerWidth <= 768) {
+            document.getElementById('cartSidebar').style.display = 'none';
+            document.getElementById('mobileCartButton').style.display = 'flex';
+        } else {
+            document.getElementById('cartSidebar').style.display = 'block';
+            document.getElementById('mobileCartButton').style.display = 'none';
+        }
+    }
+    function renderCategories() {
+        let cats = ['all', ...new Set(currentShop.items.map(i => i.category))];
+        let html = cats.map(c => `<button class="tab ${activeCat===c?'active':''}" onclick="setCategory('${c}')">${c}</button>`).join('');
+        document.getElementById('categories').innerHTML = html;
+    }
+    function setCategory(c) { activeCat = c; renderItems(); }
+    function renderItems() {
+        let search = document.getElementById('searchItem').value.toLowerCase();
+        let filtered = currentShop.items.filter(i => (activeCat === 'all' || i.category === activeCat) && i.name.toLowerCase().includes(search));
+        let html = filtered.map(item => `<div class="item-card" onclick="selectItem('${item.id}')"><div><strong>${item.name}</strong></div><div>${item.washPrice} BHD</div></div>`).join('');
+        document.getElementById('itemsGrid').innerHTML = html;
+    }
+    function selectItem(itemId) {
+        let item = currentShop.items.find(i => i.id === itemId);
+        if (!item) return;
+        if (quickAdd) addToCart(item, 'Wash & Iron', item.washPrice);
+        else showServiceModal(item);
+    }
+    function showServiceModal(item) {
+        let modal = document.createElement('div');
+        modal.className = 'card';
+        modal.style.position = 'fixed'; modal.style.top = '50%'; modal.style.left = '50%'; modal.style.transform = 'translate(-50%,-50%)'; modal.style.width = '300px'; modal.style.zIndex = '2000';
+        modal.innerHTML = `<h3>${item.name}</h3><select id="svc"><option value="wash">Wash & Iron ${item.washPrice}</option><option value="dry">Dry Clean ${item.dryPrice}</option><option value="iron">Iron Only ${item.ironPrice}</option></select><input type="number" id="qty" value="1" min="1"><div class="flex" style="margin-top:10px"><button class="btn btn-primary" onclick="addFromModal('${item.id}')">Add</button><button class="btn btn-outline" onclick="this.parentElement.parentElement.remove()">Cancel</button></div>`;
+        document.body.appendChild(modal);
+    }
+    function addFromModal(itemId) {
+        let item = currentShop.items.find(i => i.id === itemId);
+        let svc = document.getElementById('svc').value;
+        let service = svc === 'wash' ? 'Wash & Iron' : (svc === 'dry' ? 'Dry Clean' : 'Iron Only');
+        let price = svc === 'wash' ? item.washPrice : (svc === 'dry' ? item.dryPrice : item.ironPrice);
+        let qty = parseInt(document.getElementById('qty').value);
+        addToCart(item, service, price, qty);
+        document.querySelector('.card').remove();
+    }
+    function addToCart(item, service, price, qty = 1) {
+        let existing = cart.find(c => c.itemId === item.id && c.service === service);
+        if (existing) existing.qty += qty;
+        else cart.push({ itemId: item.id, name: item.name, service, price, qty });
+        renderCartUI();
+    }
+    function renderCartUI() {
+        let total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+        let discount = 0;
+        if (document.getElementById('discountChk') && document.getElementById('discountChk').checked) discount = parseFloat(document.getElementById('discountInput')?.value || 0);
+        let final = total * (1 - discount/100);
+        let html = `<h3>Cart</h3>${cart.map(c => `<div class="cart-item"><div><b>${c.name}</b> (${c.service})<br>${c.qty} x ${c.price.toFixed(3)}</div><div><button onclick="updateQty('${c.itemId}','${c.service}',-1)">-</button> ${c.qty} <button onclick="updateQty('${c.itemId}','${c.service}',1)">+</button> <button onclick="removeFromCart('${c.itemId}','${c.service}')">🗑</button></div></div>`).join('') || '<div>Empty</div>'}
+        <div>Total: ${final.toFixed(3)} BHD</div>
+        <input id="custName" placeholder="Customer Name">
+        <input id="custPhone" placeholder="Phone">
+        <input id="custAddr" placeholder="Address">
+        <label><input type="checkbox" id="deliveryChk" onchange="toggleDeliveryFields()"> Delivery</label>
+        <div id="deliveryFields" style="display:none"><select id="driverSelect">${(currentShop.drivers||[]).map(d=>`<option>${d.name}</option>`)}</select><input id="timeSlot" placeholder="Time slot"></div>
+        <label><input type="checkbox" id="discountChk" onchange="toggleDiscountFields()"> Discount %</label>
+        <div id="discountFields" style="display:none"><input type="number" id="discountInput" placeholder="%" oninput="renderCartUI()"></div>
+        <button class="btn btn-primary" onclick="generateBill()">Generate Bill & WhatsApp</button>
+        <button class="btn btn-outline" onclick="clearCart()">Clear</button>`;
+        let sidebar = document.getElementById('cartSidebar');
+        let mobilePanel = document.getElementById('mobileCartPanel');
+        if (sidebar) sidebar.innerHTML = html;
+        if (mobilePanel) mobilePanel.innerHTML = html + `<button class="btn btn-outline" onclick="closeMobileCart()">Close</button>`;
+        let badge = document.getElementById('mobileCartButton');
+        if (badge) badge.innerText = '🧺' + (cart.reduce((a,b)=>a+b.qty,0) || '');
+    }
+    function updateQty(id, service, delta) { let idx = cart.findIndex(c => c.itemId === id && c.service === service); if (idx !== -1) { cart[idx].qty += delta; if (cart[idx].qty <= 0) cart.splice(idx,1); renderCartUI(); } }
+    function removeFromCart(id, service) { cart = cart.filter(c => !(c.itemId === id && c.service === service)); renderCartUI(); }
+    function clearCart() { cart = []; renderCartUI(); }
+    function toggleDeliveryFields() { let div = document.getElementById('deliveryFields'); if (div) div.style.display = document.getElementById('deliveryChk').checked ? 'block' : 'none'; }
+    function toggleDiscountFields() { let div = document.getElementById('discountFields'); if (div) div.style.display = document.getElementById('discountChk').checked ? 'block' : 'none'; renderCartUI(); }
+    function toggleQuickAdd() { quickAdd = !quickAdd; let dot = document.getElementById('quickDot'); if (dot) dot.style.left = quickAdd ? '22px' : '2px'; document.getElementById('quickToggle').style.background = quickAdd ? '#0f2b4b' : '#ccc'; }
+    function openItemManager() { let name = prompt('New item name'); if (name) { let cat = prompt('Category'); let wash = parseFloat(prompt('Wash price')); let dry = parseFloat(prompt('Dry price')); let iron = parseFloat(prompt('Iron price')); currentShop.items.push({ id: Date.now()+'', name, category: cat, img: '', washPrice: wash, dryPrice: dry, ironPrice: iron }); let originalShop = shops.find(s => s.id === currentShop.id); if (originalShop) originalShop.items = currentShop.items; saveData(); renderCategories(); renderItems(); showToast('Item added'); } }
+    async function generateBill() {
+        if (cart.length === 0) { showToast('Cart empty', true); return; }
+        let customer = document.getElementById('custName').value || 'Walk-in';
+        let phone = document.getElementById('custPhone').value;
+        let address = document.getElementById('custAddr').value;
+        let delivery = document.getElementById('deliveryChk').checked;
+        let driver = delivery ? document.getElementById('driverSelect').value : null;
+        let timeSlot = delivery ? document.getElementById('timeSlot').value : null;
+        let discount = parseFloat(document.getElementById('discountInput')?.value || 0);
+        let subtotal = cart.reduce((s,i)=>s+i.price*i.qty,0);
+        let total = subtotal * (1 - discount/100);
+        let orderId = 'ORD' + Date.now();
+        let order = { id: orderId, date: new Date().toLocaleString(), customer, phone, address, items: [...cart], subtotal, discount, total, status: 'pending', delivery, driver, timeSlot };
+        currentShop.orders = currentShop.orders || [];
+        currentShop.orders.unshift(order);
+        let shopIndex = shops.findIndex(s => s.id === currentShop.id);
+        shops[shopIndex] = currentShop;
+        saveData();
+        // receipt image
+        let receiptDiv = document.createElement('div');
+        receiptDiv.style.padding = '20px'; receiptDiv.style.background = 'white'; receiptDiv.style.fontFamily = 'monospace';
+        receiptDiv.innerHTML = `<h2>${currentShop.name}</h2><p>${orderId} | ${order.date}</p><hr/><p><strong>${customer}</strong><br>${phone}<br>${address}</p>${order.items.map(it=>`<div>${it.name} (${it.service}) x${it.qty} = ${(it.price*it.qty).toFixed(3)} BHD</div>`).join('')}<div>Discount: ${discount}%</div><div><strong>TOTAL: ${total.toFixed(3)} BHD</strong></div><p>${delivery?`🚚 Delivery by ${driver} ${timeSlot}`:'📦 Pickup'}</p><small>Thank you</small>`;
+        document.body.appendChild(receiptDiv);
+        let canvas = await html2canvas(receiptDiv);
+        let imgData = canvas.toDataURL('image/png');
+        let link = document.createElement('a');
+        link.download = `receipt_${orderId}.png`;
+        link.href = imgData;
+        link.click();
+        receiptDiv.remove();
+        let msg = `🧾 *${currentShop.name}* 🧾\nOrder: ${orderId}\nCustomer: ${customer}\nTotal: ${total.toFixed(3)} BHD`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+        clearCart();
+        renderCartUI();
+        showToast('Bill generated, image downloaded');
+    }
+    function openMobileCart() { document.getElementById('mobileCartPanel').style.transform = 'translateY(0)'; document.getElementById('overlay').style.display = 'block'; }
+    function closeMobileCart() { document.getElementById('mobileCartPanel').style.transform = 'translateY(100%)'; document.getElementById('overlay').style.display = 'none'; }
+
+    // Driver functions
+    function driverLogin() {
+        let shopId = document.getElementById('driverShopId').value;
+        let name = document.getElementById('driverName').value;
+        let pwd = document.getElementById('driverPwd').value;
+        let shop = shops.find(s => s.id === shopId);
+        if (!shop) { showToast('Shop not found', true); return; }
+        let driver = (shop.drivers || []).find(d => d.name === name && d.password === pwd);
+        if (!driver) { showToast('Invalid driver', true); return; }
+        currentDriver = driver;
+        currentShop = shop;
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('driverPanel').style.display = 'block';
+        document.getElementById('driverNameHeader').innerHTML = `🚚 ${driver.name} (${shop.name})`;
+        showDriverOrders('pickup');
+    }
+    function showDriverOrders(type) {
+        let orders = (currentShop.orders || []).filter(o => {
+            if (type === 'pickup') return (!o.delivery && o.status !== 'picked');
+            else return (o.delivery && o.driver === currentDriver.name && o.status !== 'delivered');
+        });
+        let html = orders.map(o => `<div class="driver-order"><div class="flex"><strong>#${o.id}</strong><span>${o.date}</span></div><div><strong>${o.customer}</strong> | ${o.phone}</div><div>📍 ${o.address}</div><div class="map-link"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.address)}" target="_blank">🗺️ Open Maps</a></div><div>⏰ ${o.timeSlot || 'ASAP'}</div><div><strong>Items:</strong><ul>${o.items.map(it=>`<li>${it.name} (${it.service}) x${it.qty} = ${(it.price*it.qty).toFixed(3)} BHD</li>`).join('')}</ul></div><div><strong>Total: ${o.total.toFixed(3)} BHD</strong></div><button class="btn btn-primary" onclick="updateOrderStatus('${o.id}', '${type==='pickup'?'picked':'delivered'}')">Mark ${type==='pickup'?'Picked Up':'Delivered'}</button></div>`).join('');
+        if (orders.length === 0) html = '<div>No orders</div>';
+        document.getElementById('driverOrdersList').innerHTML = html;
+        document.getElementById('pickupTab').classList.toggle('active', type === 'pickup');
+        document.getElementById('deliveryTab').classList.toggle('active', type === 'delivery');
+    }
+    function updateOrderStatus(orderId, status) {
+        let shopIndex = shops.findIndex(s => s.id === currentShop.id);
+        let order = shops[shopIndex].orders.find(o => o.id === orderId);
+        if (order) { order.status = status; saveData(); currentShop = shops[shopIndex]; showDriverOrders(status === 'picked' ? 'pickup' : 'delivery'); showToast('Updated'); }
+    }
+
+    // initial
+    loadData();
+    window.onresize = () => { if (document.getElementById('clientPanel').style.display === 'block') renderClientPanel(); };
+    document.getElementById('searchItem')?.addEventListener('input', () => renderItems());
+</script>
+</body>
+</html>
