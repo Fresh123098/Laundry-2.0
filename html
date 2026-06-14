@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Fresh & Clean Laundry Pro | Offline POS + WhatsApp Receipt</title>
+  <!-- html2canvas for bill image -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, 'Segoe UI', 'Inter', sans-serif; background: #f1f5f9; color: #0f172a; }
+    .btn { padding: 10px 18px; border-radius: 40px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
+    .btn-primary { background: #0f2b4b; color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    .btn-primary:hover { background: #1e3a5f; transform: translateY(-1px); }
+    .btn-outline { background: transparent; border: 1.5px solid #0f2b4b; color: #0f2b4b; }
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+    .card { background: white; border-radius: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 10px 20px; border-radius: 40px; z-index: 3000; opacity: 0; transition: 0.2s; pointer-events: none; font-size: 0.9rem; }
+    .toast.show { opacity: 1; }
+    /* Login */
+    .login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #e0e7ff, #cbd5e1); padding: 20px; }
+    .login-card { background: rgba(255,255,255,0.96); border-radius: 48px; padding: 32px 28px; width: 100%; max-width: 440px; box-shadow: 0 25px 40px -12px black; }
+    .tab-btns { display: flex; gap: 12px; margin-bottom: 28px; }
+    .tab-btn { flex: 1; padding: 12px; border: none; background: #eef2ff; border-radius: 60px; font-weight: 700; cursor: pointer; }
+    .tab-btn.active { background: #0f2b4b; color: white; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { font-weight: 600; display: block; margin-bottom: 6px; font-size: 0.85rem; }
+    input, select { width: 100%; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 28px; font-size: 1rem; background: white; }
+    input:focus { outline: none; border-color: #0f2b4b; box-shadow: 0 0 0 3px rgba(15,43,75,0.1); }
+    /* Header */
+    .header { background: linear-gradient(98deg, #0f2b4b, #1e3a5f); color: white; padding: 28px 20px; text-align: center; border-radius: 0 0 32px 32px; }
+    .logo-text { font-size: 2rem; font-weight: 800; }
+    .top-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; background: white; padding: 12px 20px; border-bottom: 1px solid #e2e8f0; }
+    .search-container input { background: #f8fafc; min-width: 180px; }
+    .toggle-switch { width: 44px; height: 24px; background: #cbd5e1; border-radius: 30px; position: relative; cursor: pointer; transition: 0.2s; }
+    .toggle-switch.active { background: #0f2b4b; }
+    .toggle-switch::after { content: ''; width: 20px; height: 20px; background: white; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: 0.2s; }
+    .toggle-switch.active::after { left: 22px; }
+    /* Items grid */
+    .items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; padding: 20px; }
+    .item-card { background: white; border-radius: 24px; overflow: hidden; cursor: pointer; transition: 0.1s; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+    .item-card:active { transform: scale(0.97); }
+    .item-img { width: 100%; height: 120px; object-fit: cover; background: #e2e8f0; }
+    .item-info { padding: 12px; text-align: center; }
+    .item-name { font-weight: 700; }
+    .item-price { color: #0f2b4b; font-weight: 800; margin-top: 4px; }
+    /* Cart sidebar */
+    .cart-sidebar { width: 360px; background: white; border-left: 1px solid #e2e8f0; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+    .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+    .qty-btn { width: 28px; height: 28px; border-radius: 30px; background: #f1f5f9; border: none; font-weight: bold; cursor: pointer; }
+    .total-row { font-size: 1.3rem; font-weight: 800; display: flex; justify-content: space-between; border-top: 2px dashed #cbd5e1; padding-top: 12px; margin-top: 8px; }
+    @media (max-width: 768px) {
+      .cart-sidebar { display: none; }
+      .mobile-cart-btn { position: fixed; bottom: 20px; right: 20px; background: #0f2b4b; width: 56px; height: 56px; border-radius: 30px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.6rem; box-shadow: 0 8px 20px black; z-index: 100; cursor: pointer; }
+      .cart-panel { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-radius: 28px 28px 0 0; padding: 24px; transform: translateY(100%); transition: 0.25s; z-index: 1000; max-height: 85vh; overflow-y: auto; }
+      .cart-panel.open { transform: translateY(0); }
+      .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 999; display: none; }
+      .overlay.show { display: block; }
+    }
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 2000; }
+    .modal.show { display: flex; }
+    .modal-content { background: white; border-radius: 32px; padding: 28px; width: 90%; max-width: 500px; max-height: 85vh; overflow-y: auto; }
+    .bill-line { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #e2e8f0; }
+    .driver-order-card { background: white; border-radius: 20px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; }
+    .receipt-preview { background: white; padding: 20px; border-radius: 24px; max-width: 400px; margin: 0 auto; font-family: monospace; }
+  </style>
+</head>
+<body>
+<div id="toastMsg" class="toast">✓</div>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <h2 style="margin-bottom: 8px;">🧺 Fresh & Clean</h2>
+    <p style="margin-bottom: 24px; color:#475569;">Laundry Manager Pro</p>
+    <div class="tab-btns">
+      <button class="tab-btn active" onclick="switchTab('master')">Master</button>
+      <button class="tab-btn" onclick="switchTab('client')">Client</button>
+      <button class="tab-btn" onclick="switchTab('driver')">Driver</button>
+    </div>
+    <div id="masterLoginForm">
+      <div class="form-group"><label>Master Password</label><input type="password" id="masterPass" placeholder="••••••"></div>
+      <button class="btn btn-primary" onclick="masterLogin()">Access Master Panel</button>
+    </div>
+    <div id="clientLoginForm" style="display:none">
+      <div class="form-group"><label>Shop ID</label><input type="text" id="clientShopId" placeholder="e.g., fresh123"></div>
+      <div class="form-group"><label>Password</label><input type="password" id="clientPass" placeholder="Owner or Staff password"></div>
+      <button class="btn btn-primary" onclick="clientLogin()">Login to Shop</button>
+    </div>
+    <div id="driverLoginForm" style="display:none">
+      <div class="form-group"><label>Shop ID</label><input type="text" id="driverShopId" placeholder="Shop ID"></div>
+      <div class="form-group"><label>Driver Name</label><input type="text" id="driverName" placeholder="e.g., Ahmed"></div>
+      <div class="form-group"><label>Password</label><input type="password" id="driverPasswd" placeholder="Driver password"></div>
+      <button class="btn btn-primary" onclick="driverLogin()">Login as Driver</button>
+    </div>
+  </div>
+</div>
+
+<!-- MASTER DASHBOARD -->
+<div id="masterDashboard" style="display:none; padding:20px;"></div>
+
+<!-- CLIENT APP CONTAINER -->
+<div id="clientApp" style="display:none;"></div>
+
+<!-- DRIVER DASHBOARD -->
+<div id="driverDashboard" style="display:none;"></div>
+
+<!-- Hidden receipt div for image capture -->
+<div id="receiptCapture" style="position: fixed; left: -9999px; top: 0; background: white; padding: 24px; width: 400px; font-family: monospace;"></div>
+
+<script>
+  // -------------------- INIT & STORAGE --------------------
+  function loadDB() {
+    if (!localStorage.getItem('laundry_master')) {
+      localStorage.setItem('laundry_master', JSON.stringify({ password: 'master2025', whatsapp: '+97312345678', clients: [] }));
+    }
+    if (!localStorage.getItem('laundry_shops')) {
+      // Preload one demo shop with items
+      const defaultItems = [
+        { id: 'item1', name: '👕 T-Shirt', category: 'Clothing', imageUrl: 'https://placehold.co/400x300?text=T-Shirt', washPrice: 0.800, dryPrice: 1.200, ironPrice: 0.400 },
+        { id: 'item2', name: '👖 Jeans', category: 'Clothing', imageUrl: 'https://placehold.co/400x300?text=Jeans', washPrice: 1.200, dryPrice: 1.800, ironPrice: 0.600 },
+        { id: 'item3', name: '👔 Formal Shirt', category: 'Clothing', imageUrl: 'https://placehold.co/400x300?text=Shirt', washPrice: 1.000, dryPrice: 1.500, ironPrice: 0.500 },
+        { id: 'item4', name: '🛏️ Bedsheet', category: 'Home', imageUrl: 'https://placehold.co/400x300?text=Bedsheet', washPrice: 1.500, dryPrice: 2.200, ironPrice: 0.800 },
+        { id: 'item5', name: '🧥 Jacket', category: 'Clothing', imageUrl: 'https://placehold.co/400x300?text=Jacket', washPrice: 1.800, dryPrice: 2.500, ironPrice: 0.900 },
+        { id: 'item6', name: '🧣 Towel', category: 'Home', imageUrl: 'https://placehold.co/400x300?text=Towel', washPrice: 0.600, dryPrice: 0.900, ironPrice: 0.300 }
+      ];
+      const demoShop = {
+        id: 'fresh1', name: 'Fresh & Clean Downtown', ownerPassword: 'owner123', staffPassword: 'staff123', logo: '', whatsapp: '+97300000000',
+        items: defaultItems, orders: [], drivers: [{ name: 'Ahmed', password: 'driver123' }]
+      };
+      localStorage.setItem('laundry_shops', JSON.stringify([demoShop]));
+    }
+  }
+  function getMaster() { return JSON.parse(localStorage.getItem('laundry_master')); }
+  function saveMaster(data) { localStorage.setItem('laundry_master', JSON.stringify(data)); }
+  function getShops() { return JSON.parse(localStorage.getItem('laundry_shops')) || []; }
+  function saveShops(shops) { localStorage.setItem('laundry_shops', JSON.stringify(shops)); }
+  function showToast(msg, isErr = false) { let t = document.getElementById('toastMsg'); t.textContent = msg; t.style.background = isErr ? '#b91c1c' : '#0f2b4b'; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); }
+
+  // -------------------- MASTER LOGIC --------------------
+  function masterLogin() {
+    const pwd = document.getElementById('masterPass').value;
+    const master = getMaster();
+    if (pwd === master.password) {
+      document.getElementById('loginScreen').style.display = 'none';
+      renderMasterDashboard();
+      showToast('Welcome Master');
+    } else showToast('Wrong master password', true);
+  }
+  function renderMasterDashboard() {
+    const container = document.getElementById('masterDashboard');
+    const shops = getShops();
+    container.innerHTML = `<div class="header"><div class="logo-text">⚙️ Master Control</div></div>
+    <div style="padding:20px"><div class="flex-between"><h2>🏪 Registered Shops</h2><button class="btn btn-primary" onclick="addShop()">+ New Shop</button><button class="btn btn-outline" onclick="logoutMaster()">Logout</button></div>
+    <div id="masterShopsList"></div></div>`;
+    const listDiv = document.getElementById('masterShopsList');
+    if (shops.length === 0) listDiv.innerHTML = '<div class="card" style="padding:20px">No shops created yet.</div>';
+    shops.forEach(shop => {
+      listDiv.innerHTML += `<div class="card" style="padding:16px; margin-top:12px;"><div><strong>${shop.name}</strong> (ID: ${shop.id})<br>🔑 Owner: ${shop.ownerPassword} | 🧑‍💼 Staff: ${shop.staffPassword}</div><div style="margin-top:10px"><button class="btn btn-outline btn-sm" onclick="editShop('${shop.id}')">Edit</button><button class="btn btn-outline btn-sm" style="border-color:#dc2626; color:#dc2626;" onclick="deleteShop('${shop.id}')">Delete</button></div></div>`;
+    });
+    document.getElementById('masterDashboard').style.display = 'block';
+  }
+  function addShop() {
+    let name = prompt('Shop Name');
+    if (!name) return;
+    let id = prompt('Unique Shop ID (no spaces, e.g., fresh2)');
+    if (!id) return;
+    let ownerPwd = prompt('Set Owner password');
+    let staffPwd = prompt('Set Staff password');
+    let shops = getShops();
+    if (shops.find(s => s.id === id)) { showToast('ID already exists', true); return; }
+    shops.push({ id, name, ownerPassword: ownerPwd, staffPassword: staffPwd, logo: '', whatsapp: '', items: [], orders: [], drivers: [] });
+    saveShops(shops);
+    renderMasterDashboard();
+    showToast(`Shop ${name} created`);
+  }
+  function editShop(id) {
+    let shops = getShops();
+    let shop = shops.find(s => s.id === id);
+    if (!shop) return;
+    let newName = prompt('Shop name', shop.name);
+    if (newName) shop.name = newName;
+    let ownPwd = prompt('Owner password', shop.ownerPassword);
+    if (ownPwd) shop.ownerPassword = ownPwd;
+    let staffPwd = prompt('Staff password', shop.staffPassword);
+    if (staffPwd) shop.staffPassword = staffPwd;
+    saveShops(shops);
+    renderMasterDashboard();
+  }
+  function deleteShop(id) { if (confirm('Delete shop permanently?')) { let shops = getShops().filter(s => s.id !== id); saveShops(shops); renderMasterDashboard(); showToast('Shop deleted'); } }
+  function logoutMaster() { document.getElementById('masterDashboard').style.display = 'none'; document.getElementById('loginScreen').style.display = 'flex'; }
+
+  // -------------------- CLIENT LOGIC (POS) --------------------
+  let currentShop = null, currentUserRole = null, cart = [], allItems = [], categories = new Set(), activeCategory = 'all', currentSearch = '', quickAddMode = false;
+
+  function clientLogin() {
+    let shopId = document.getElementById('clientShopId').value.trim();
+    let pwd = document.getElementById('clientPass').value;
+    let shops = getShops();
+    let shop = shops.find(s => s.id === shopId);
+    if (!shop) { showToast('Shop not found', true); return; }
+    if (pwd === shop.ownerPassword) currentUserRole = 'owner';
+    else if (pwd === shop.staffPassword) currentUserRole = 'staff';
+    else { showToast('Invalid password', true); return; }
+    currentShop = JSON.parse(JSON.stringify(shop));
+    if (!currentShop.items) currentShop.items = [];
+    if (!currentShop.orders) currentShop.orders = [];
+    if (!currentShop.drivers) currentShop.drivers = [];
+    allItems = currentShop.items;
+    categories.clear();
+    allItems.forEach(i => categories.add(i.category));
+    renderClientApp();
+    showToast(`Welcome ${currentShop.name} (${currentUserRole})`);
+  }
+  function renderClientApp() {
+    let container = document.getElementById('clientApp');
+    container.innerHTML = `
+      <div class="header"><div class="logo-text">🧼 ${currentShop.name}</div><div>${currentUserRole === 'owner' ? '👑 Owner' : '👔 Staff'}</div></div>
+      <div class="top-bar"><span class="datetime" id="liveDate"></span><div class="search-container"><input type="text" id="globalSearch" placeholder="🔍 Search items" oninput="updateSearch()"></div><div class="quick-add-toggle"><span>Quick Add</span><div id="quickToggle" class="toggle-switch" onclick="toggleQuickAdd()"></div></div>${currentUserRole === 'owner' ? '<button class="btn btn-outline btn-sm" onclick="openAdminItems()">📦 Manage Items</button>' : ''}</div>
+      <div style="display:flex; flex-wrap:wrap;"><div style="flex:1"><div id="categoryTabs" class="tabs" style="display:flex; gap:8px; padding:12px; overflow-x:auto"></div><div id="itemsGrid" class="items-grid"></div></div><div id="desktopCartSide" class="cart-sidebar"></div></div>
+      <div class="overlay" id="mobileOverlay" onclick="closeMobileCart()"></div><div class="cart-panel" id="mobileCartPanel"><div id="mobileCartInner"></div><button class="btn btn-outline" style="margin-top:12px;" onclick="closeMobileCart()">Close</button></div>
+      <div class="mobile-cart-btn" onclick="openMobileCart()">🧺<span id="mobileCartBadge" style="position:absolute; top:-5px; right:-5px; background:#f97316; border-radius:50%; width:22px; height:22px; font-size:12px; display:flex; align-items:center; justify-content:center;">0</span></div>`;
+    renderCategories();
+    renderItemsGrid();
+    renderCartUI();
+    setInterval(() => { let d = document.getElementById('liveDate'); if(d) d.innerText = new Date().toLocaleString(); }, 1000);
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('clientApp').style.display = 'block';
+  }
+  function renderCategories() {
+    let tabsDiv = document.getElementById('categoryTabs');
+    if (!tabsDiv) return;
+    let html = `<button class="tab ${activeCategory === 'all' ? 'active' : ''}" onclick="setCategory('all')">All</button>`;
+    for (let cat of categories) html += `<button class="tab ${activeCategory === cat ? 'active' : ''}" onclick="setCategory('${cat}')">${cat}</button>`;
+    tabsDiv.innerHTML = html;
+  }
+  function setCategory(cat) { activeCategory = cat; renderCategories(); renderItemsGrid(); }
+  function updateSearch() { currentSearch = document.getElementById('globalSearch')?.value.toLowerCase() || ''; renderItemsGrid(); }
+  function renderItemsGrid() {
+    let grid = document.getElementById('itemsGrid');
+    if (!grid) return;
+    let filtered = allItems.filter(i => (activeCategory === 'all' || i.category === activeCategory) && i.name.toLowerCase().includes(currentSearch));
+    if (filtered.length === 0) { grid.innerHTML = '<div style="padding:40px; text-align:center">No items</div>'; return; }
+    grid.innerHTML = filtered.map(item => `
+      <div class="item-card" onclick="selectItem('${item.id}')">
+        <img class="item-img" src="${item.imageUrl || 'https://placehold.co/400x300?text=Laundry'}" onerror="this.src='https://placehold.co/400x300?text=Item'">
+        <div class="item-info"><div class="item-name">${item.name}</div><div class="item-price">Wash ${(item.washPrice||0.5).toFixed(3)} BHD</div></div>
+      </div>
+    `).join('');
+  }
+  function selectItem(itemId) {
+    let item = allItems.find(i => i.id === itemId);
+    if (!item) return;
+    if (quickAddMode) { addToCart(item, 'Wash & Iron', item.washPrice || 0.5); showToast(`+ ${item.name}`); }
+    else showServiceModal(item);
+  }
+  function showServiceModal(item) {
+    let modalDiv = document.createElement('div'); modalDiv.className = 'modal show'; modalDiv.id = 'tempServiceModal';
+    modalDiv.innerHTML = `<div class="modal-content"><h3>${item.name}</h3><select id="srvType"><option value="wash">Wash & Iron - ${(item.washPrice||0.5).toFixed(3)} BHD</option><option value="dry">Dry Clean - ${(item.dryPrice||0.8).toFixed(3)} BHD</option><option value="iron">Iron Only - ${(item.ironPrice||0.3).toFixed(3)} BHD</option></select><div class="form-group"><label>Quantity</label><input type="number" id="modalQty" value="1" min="1"></div><button class="btn btn-primary" onclick="addFromModal('${item.id}')">Add to Cart</button><button class="btn btn-outline" onclick="closeDynamicModal()">Cancel</button></div>`;
+    document.body.appendChild(modalDiv);
+  }
+  function addFromModal(itemId) {
+    let item = allItems.find(i => i.id === itemId);
+    let select = document.getElementById('srvType');
+    let selected = select.options[select.selectedIndex].text;
+    let service = selected.split(' - ')[0];
+    let price = 0;
+    if (service === 'Wash & Iron') price = item.washPrice;
+    else if (service === 'Dry Clean') price = item.dryPrice;
+    else price = item.ironPrice;
+    let qty = parseInt(document.getElementById('modalQty').va
